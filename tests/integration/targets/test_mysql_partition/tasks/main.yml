@@ -1,0 +1,210 @@
+---
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+# Copyright: (c) 2025, Steve Fulmer (@stevefulme1)
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+# Test mysql_partition module
+
+# ============================================================
+# Setup: create test database and partitioned table
+# ============================================================
+- name: Create test database
+  ansible.mysql.mysql_db:
+    name: partition_test_db
+    state: present
+    login_unix_socket: "{{ mysql_socket }}"
+
+- name: Create partitioned table
+  ansible.mysql.mysql_query:
+    query: >
+      CREATE TABLE partition_test_db.orders (
+        id INT NOT NULL,
+        order_date DATE NOT NULL,
+        amount DECIMAL(10,2),
+        PRIMARY KEY (id, order_date)
+      ) PARTITION BY RANGE (YEAR(order_date)) (
+        PARTITION p2022 VALUES LESS THAN (2023),
+        PARTITION p2023 VALUES LESS THAN (2024)
+      )
+    login_unix_socket: "{{ mysql_socket }}"
+
+# ============================================================
+# Test adding a partition
+# ============================================================
+- name: Add partition p2024
+  ansible.mysql.mysql_partition:
+    schema: partition_test_db
+    table: orders
+    partition_name: p2024
+    values_less_than: "2025"
+    state: present
+    login_unix_socket: "{{ mysql_socket }}"
+  register: result
+
+- name: Assert partition was added
+  ansible.builtin.assert:
+    that:
+      - result.changed
+      - "'ADD PARTITION' in result.queries[0]"
+
+# ============================================================
+# Test idempotency of adding partition
+# ============================================================
+- name: Add partition p2024 again (idempotency)
+  ansible.mysql.mysql_partition:
+    schema: partition_test_db
+    table: orders
+    partition_name: p2024
+    values_less_than: "2025"
+    state: present
+    login_unix_socket: "{{ mysql_socket }}"
+  register: result
+
+- name: Assert no change on idempotent add
+  ansible.builtin.assert:
+    that:
+      - not result.changed
+
+# ============================================================
+# Test adding MAXVALUE partition
+# ============================================================
+- name: Add MAXVALUE partition
+  ansible.mysql.mysql_partition:
+    schema: partition_test_db
+    table: orders
+    partition_name: p_future
+    values_less_than: MAXVALUE
+    state: present
+    login_unix_socket: "{{ mysql_socket }}"
+  register: result
+
+- name: Assert MAXVALUE partition was added
+  ansible.builtin.assert:
+    that:
+      - result.changed
+
+# ============================================================
+# Test truncating a partition
+# ============================================================
+- name: Truncate partition p2022
+  ansible.mysql.mysql_partition:
+    schema: partition_test_db
+    table: orders
+    partition_name: p2022
+    state: truncated
+    login_unix_socket: "{{ mysql_socket }}"
+  register: result
+
+- name: Assert partition was truncated
+  ansible.builtin.assert:
+    that:
+      - result.changed
+      - "'TRUNCATE PARTITION' in result.queries[0]"
+
+# ============================================================
+# Test reorganizing a partition
+# ============================================================
+- name: Reorganize p_future into p2025 and p_future
+  ansible.mysql.mysql_partition:
+    schema: partition_test_db
+    table: orders
+    partition_name: p_future
+    state: reorganized
+    reorganize_into:
+      - name: p2025
+        values_less_than: "2026"
+      - name: p_future
+        values_less_than: MAXVALUE
+    login_unix_socket: "{{ mysql_socket }}"
+  register: result
+
+- name: Assert partition was reorganized
+  ansible.builtin.assert:
+    that:
+      - result.changed
+      - "'REORGANIZE PARTITION' in result.queries[0]"
+
+# ============================================================
+# Test dropping a partition
+# ============================================================
+- name: Drop partition p2022
+  ansible.mysql.mysql_partition:
+    schema: partition_test_db
+    table: orders
+    partition_name: p2022
+    state: absent
+    login_unix_socket: "{{ mysql_socket }}"
+  register: result
+
+- name: Assert partition was dropped
+  ansible.builtin.assert:
+    that:
+      - result.changed
+      - "'DROP PARTITION' in result.queries[0]"
+
+# ============================================================
+# Test idempotent drop
+# ============================================================
+- name: Drop already-absent partition p2022 (idempotency)
+  ansible.mysql.mysql_partition:
+    schema: partition_test_db
+    table: orders
+    partition_name: p2022
+    state: absent
+    login_unix_socket: "{{ mysql_socket }}"
+  register: result
+
+- name: Assert no change on idempotent drop
+  ansible.builtin.assert:
+    that:
+      - not result.changed
+
+# ============================================================
+# Test check_mode
+# ============================================================
+- name: Add partition in check_mode
+  ansible.mysql.mysql_partition:
+    schema: partition_test_db
+    table: orders
+    partition_name: p2026
+    values_less_than: "2027"
+    state: present
+    login_unix_socket: "{{ mysql_socket }}"
+  check_mode: true
+  register: result
+
+- name: Assert check_mode reports changed
+  ansible.builtin.assert:
+    that:
+      - result.changed
+
+# ============================================================
+# Test truncate nonexistent partition (should fail)
+# ============================================================
+- name: Truncate nonexistent partition (should fail)
+  ansible.mysql.mysql_partition:
+    schema: partition_test_db
+    table: orders
+    partition_name: p_nonexistent
+    state: truncated
+    login_unix_socket: "{{ mysql_socket }}"
+  register: result
+  ignore_errors: true
+
+- name: Assert failure on nonexistent partition truncate
+  ansible.builtin.assert:
+    that:
+      - result.failed
+
+# ============================================================
+# Cleanup
+# ============================================================
+- name: Drop test database
+  ansible.mysql.mysql_db:
+    name: partition_test_db
+    state: absent
+    login_unix_socket: "{{ mysql_socket }}"

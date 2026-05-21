@@ -1,0 +1,145 @@
+---
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+# Copyright: (c) 2025, Steve Fulmer (@stevefulme1)
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+# Test mysql_tablespace and mysql_tablespace_info modules
+
+# ============================================================
+# Test creating a tablespace
+# ============================================================
+- name: Create a general tablespace
+  ansible.mysql.mysql_tablespace:
+    name: test_ts
+    datafile: test_ts.ibd
+    state: present
+    login_unix_socket: "{{ mysql_socket }}"
+  register: result
+
+- name: Assert tablespace was created
+  ansible.builtin.assert:
+    that:
+      - result.changed
+      - "'CREATE TABLESPACE' in result.queries[0]"
+
+# ============================================================
+# Test idempotency
+# ============================================================
+- name: Create same tablespace again (idempotency)
+  ansible.mysql.mysql_tablespace:
+    name: test_ts
+    datafile: test_ts.ibd
+    state: present
+    login_unix_socket: "{{ mysql_socket }}"
+  register: result
+
+- name: Assert no change on idempotent call
+  ansible.builtin.assert:
+    that:
+      - not result.changed
+
+# ============================================================
+# Test mysql_tablespace_info - all tablespaces
+# ============================================================
+- name: Get all tablespace info
+  ansible.mysql.mysql_tablespace_info:
+    login_unix_socket: "{{ mysql_socket }}"
+  register: all_ts
+
+- name: Assert tablespaces returned
+  ansible.builtin.assert:
+    that:
+      - all_ts.tablespaces | length > 0
+
+# ============================================================
+# Test mysql_tablespace_info - specific tablespace
+# ============================================================
+- name: Get specific tablespace info
+  ansible.mysql.mysql_tablespace_info:
+    name: test_ts
+    login_unix_socket: "{{ mysql_socket }}"
+  register: ts_info
+
+- name: Assert specific tablespace info
+  ansible.builtin.assert:
+    that:
+      - ts_info.tablespaces | length == 1
+      - ts_info.tablespaces[0].name == 'test_ts'
+
+# ============================================================
+# Test check_mode for drop
+# ============================================================
+- name: Drop tablespace in check_mode
+  ansible.mysql.mysql_tablespace:
+    name: test_ts
+    state: absent
+    login_unix_socket: "{{ mysql_socket }}"
+  check_mode: true
+  register: result
+
+- name: Assert check_mode reports changed
+  ansible.builtin.assert:
+    that:
+      - result.changed
+
+- name: Verify tablespace still exists after check_mode
+  ansible.mysql.mysql_tablespace_info:
+    name: test_ts
+    login_unix_socket: "{{ mysql_socket }}"
+  register: ts_check
+
+- name: Assert tablespace still present
+  ansible.builtin.assert:
+    that:
+      - ts_check.tablespaces | length == 1
+
+# ============================================================
+# Test dropping a tablespace
+# ============================================================
+- name: Drop the tablespace
+  ansible.mysql.mysql_tablespace:
+    name: test_ts
+    state: absent
+    login_unix_socket: "{{ mysql_socket }}"
+  register: result
+
+- name: Assert tablespace was dropped
+  ansible.builtin.assert:
+    that:
+      - result.changed
+
+# ============================================================
+# Test idempotent drop
+# ============================================================
+- name: Drop already-absent tablespace (idempotency)
+  ansible.mysql.mysql_tablespace:
+    name: test_ts
+    state: absent
+    login_unix_socket: "{{ mysql_socket }}"
+  register: result
+
+- name: Assert no change on idempotent drop
+  ansible.builtin.assert:
+    that:
+      - not result.changed
+
+# ============================================================
+# Test missing datafile on create
+# ============================================================
+- name: Attempt create without datafile (should fail)
+  ansible.mysql.mysql_tablespace:
+    name: test_ts_no_datafile
+    state: present
+    login_unix_socket: "{{ mysql_socket }}"
+  register: result
+  ignore_errors: true
+
+- name: Assert failure without datafile
+  ansible.builtin.assert:
+    that:
+      - result.failed
+      - "'datafile' in result.msg"

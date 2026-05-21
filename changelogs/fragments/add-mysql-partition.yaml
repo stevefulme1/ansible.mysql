@@ -1,0 +1,4 @@
+minor_changes:
+  - mysql_partition - new module to manage MySQL table partitions (ADD, DROP,
+    TRUNCATE, REORGANIZE) with RANGE, LIST, HASH, and KEY partition types
+    (https://github.com/ansible-collections/ansible.mysql/pull/XXX).

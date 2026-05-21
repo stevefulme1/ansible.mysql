@@ -1,0 +1,120 @@
+---
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+# Copyright: (c) 2025, Steve Fulmer (@stevefulme1)
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+# Test mysql_replication_filter module
+
+- name: Create test database for replication filter tests
+  ansible.mysql.mysql_db:
+    name: filter_test_db
+    state: present
+    login_unix_socket: "{{ mysql_socket }}"
+
+# ============================================================
+# Test setting REPLICATE_DO_DB filter
+# ============================================================
+- name: Set REPLICATE_DO_DB filter
+  ansible.mysql.mysql_replication_filter:
+    replicate_do_db:
+      - filter_test_db
+    state: present
+    login_unix_socket: "{{ mysql_socket }}"
+  register: result
+
+- name: Assert filter was set
+  ansible.builtin.assert:
+    that:
+      - result.changed
+      - "'CHANGE REPLICATION FILTER' in result.queries[0]"
+
+# ============================================================
+# Test idempotency
+# ============================================================
+- name: Set same REPLICATE_DO_DB filter again (idempotency)
+  ansible.mysql.mysql_replication_filter:
+    replicate_do_db:
+      - filter_test_db
+    state: present
+    login_unix_socket: "{{ mysql_socket }}"
+  register: result
+
+- name: Assert no change on idempotent call
+  ansible.builtin.assert:
+    that:
+      - not result.changed
+
+# ============================================================
+# Test clearing filters with state=absent
+# ============================================================
+- name: Clear REPLICATE_DO_DB filter
+  ansible.mysql.mysql_replication_filter:
+    replicate_do_db: []
+    state: absent
+    login_unix_socket: "{{ mysql_socket }}"
+  register: result
+
+- name: Assert filter was cleared
+  ansible.builtin.assert:
+    that:
+      - result.changed
+
+# ============================================================
+# Test multiple filter types at once
+# ============================================================
+- name: Set multiple filter types
+  ansible.mysql.mysql_replication_filter:
+    replicate_do_db:
+      - filter_test_db
+    replicate_ignore_table:
+      - filter_test_db.tmp_logs
+    state: present
+    login_unix_socket: "{{ mysql_socket }}"
+  register: result
+
+- name: Assert multiple filters were set
+  ansible.builtin.assert:
+    that:
+      - result.changed
+      - result.queries | length > 0
+
+# ============================================================
+# Test check_mode
+# ============================================================
+- name: Set wildcard filter in check_mode
+  ansible.mysql.mysql_replication_filter:
+    replicate_wild_do_table:
+      - "filter_test_db.order%"
+    state: present
+    login_unix_socket: "{{ mysql_socket }}"
+  check_mode: true
+  register: result
+
+- name: Assert check_mode reports changed
+  ansible.builtin.assert:
+    that:
+      - result.changed
+
+# ============================================================
+# Cleanup
+# ============================================================
+- name: Clear all filters
+  ansible.mysql.mysql_replication_filter:
+    replicate_do_db: []
+    replicate_ignore_db: []
+    replicate_do_table: []
+    replicate_ignore_table: []
+    replicate_wild_do_table: []
+    replicate_wild_ignore_table: []
+    state: absent
+    login_unix_socket: "{{ mysql_socket }}"
+
+- name: Drop test database
+  ansible.mysql.mysql_db:
+    name: filter_test_db
+    state: absent
+    login_unix_socket: "{{ mysql_socket }}"

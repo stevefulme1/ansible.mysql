@@ -1,0 +1,7 @@
+minor_changes:
+  - mysql_tablespace - new module to create, alter, and drop InnoDB general
+    tablespaces with datafile, encryption, and engine support
+    (https://github.com/ansible-collections/ansible.mysql/pull/XXX).
+  - mysql_tablespace_info - new module to gather InnoDB tablespace information
+    from information_schema
+    (https://github.com/ansible-collections/ansible.mysql/pull/XXX).
