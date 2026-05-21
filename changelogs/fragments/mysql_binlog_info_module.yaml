@@ -1,0 +1,5 @@
+minor_changes:
+  - mysql_binlog_info - new module to gather binary log status and file list with
+    automatic fallback from SHOW BINARY LOG STATUS to SHOW MASTER STATUS for
+    MySQL versions prior to 8.0.22
+    (https://github.com/ansible-collections/ansible.mysql/pull/000).

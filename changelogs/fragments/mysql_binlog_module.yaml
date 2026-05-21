@@ -1,0 +1,4 @@
+minor_changes:
+  - mysql_binlog - new module to manage MySQL/MariaDB binary log settings including
+    binlog_format, binlog_expire_logs_seconds, and PURGE BINARY LOGS operations
+    (https://github.com/ansible-collections/ansible.mysql/pull/000).

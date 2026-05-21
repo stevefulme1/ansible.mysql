@@ -1,0 +1,151 @@
+---
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+# Note: Clone Plugin tests require MySQL 8.0.17+ and will be skipped
+# on MariaDB or older MySQL versions.
+
+# ============================================================
+# Test plugin installation (state=present)
+# ============================================================
+
+- name: Ensure Clone Plugin is installed
+  ansible.mysql.mysql_clone:
+    state: present
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+  register: clone_install
+  ignore_errors: true
+
+- name: Skip remaining tests if clone plugin not available
+  ansible.builtin.meta: end_play
+  when: clone_install is failed
+
+- name: Verify plugin was installed
+  ansible.builtin.assert:
+    that:
+      - clone_install.plugin_installed == true
+
+# ============================================================
+# Test idempotent plugin installation
+# ============================================================
+
+- name: Install Clone Plugin again (idempotent)
+  ansible.mysql.mysql_clone:
+    state: present
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+  register: clone_install_idem
+
+- name: Verify no change on second install
+  ansible.builtin.assert:
+    that:
+      - clone_install_idem is not changed
+      - clone_install_idem.plugin_installed == true
+
+# ============================================================
+# Test check_mode for plugin install/uninstall
+# ============================================================
+
+- name: Uninstall in check mode
+  ansible.mysql.mysql_clone:
+    state: absent
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+  check_mode: true
+  register: clone_uninstall_check
+
+- name: Verify check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - clone_uninstall_check is changed
+
+# ============================================================
+# Test plugin uninstall (state=absent)
+# ============================================================
+
+- name: Uninstall Clone Plugin
+  ansible.mysql.mysql_clone:
+    state: absent
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+  register: clone_uninstall
+
+- name: Verify plugin was uninstalled
+  ansible.builtin.assert:
+    that:
+      - clone_uninstall is changed
+      - clone_uninstall.plugin_installed == false
+
+# ============================================================
+# Test idempotent plugin removal
+# ============================================================
+
+- name: Uninstall Clone Plugin again (idempotent)
+  ansible.mysql.mysql_clone:
+    state: absent
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+  register: clone_uninstall_idem
+
+- name: Verify no change on second uninstall
+  ansible.builtin.assert:
+    that:
+      - clone_uninstall_idem is not changed
+
+# ============================================================
+# Reinstall for local clone test
+# ============================================================
+
+- name: Reinstall Clone Plugin for local clone test
+  ansible.mysql.mysql_clone:
+    state: present
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+
+# ============================================================
+# Test local clone in check_mode
+# ============================================================
+
+- name: Local clone in check mode
+  ansible.mysql.mysql_clone:
+    state: clone_local
+    data_directory: "{{ clone_data_dir }}"
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+  check_mode: true
+  register: clone_local_check
+
+- name: Verify check mode for local clone
+  ansible.builtin.assert:
+    that:
+      - clone_local_check is changed
+
+# ============================================================
+# Cleanup - ensure plugin is left uninstalled
+# ============================================================
+
+- name: Cleanup - uninstall Clone Plugin
+  ansible.mysql.mysql_clone:
+    state: absent
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+  ignore_errors: true

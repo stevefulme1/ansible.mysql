@@ -1,0 +1,4 @@
+minor_changes:
+  - mysql_backup - new module to manage MySQL/MariaDB database backups using mysqldump
+    or mysqlpump with support for compression, encryption, parallel dumps, and retention
+    cleanup (https://github.com/ansible-collections/ansible.mysql/pull/000).

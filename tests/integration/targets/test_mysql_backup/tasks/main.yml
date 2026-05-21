@@ -1,0 +1,191 @@
+---
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+- name: Create backup directory
+  ansible.builtin.file:
+    path: "{{ backup_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Create test database
+  ansible.mysql.mysql_db:
+    name: "{{ test_db }}"
+    state: present
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+
+# ============================================================
+# Test basic backup (state=present)
+# ============================================================
+
+- name: Create a plain SQL backup
+  ansible.mysql.mysql_backup:
+    databases:
+      - "{{ test_db }}"
+    target: "{{ backup_dir }}/plain.sql"
+    compression: none
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+  register: backup_plain
+
+- name: Verify plain backup was created
+  ansible.builtin.assert:
+    that:
+      - backup_plain is changed
+      - backup_plain.target == backup_dir ~ "/plain.sql"
+      - backup_plain.size > 0
+      - backup_plain.executed_commands | length > 0
+
+# ============================================================
+# Test gzip compression
+# ============================================================
+
+- name: Create a gzip compressed backup
+  ansible.mysql.mysql_backup:
+    databases:
+      - "{{ test_db }}"
+    target: "{{ backup_dir }}/compressed.sql.gz"
+    compression: gzip
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+  register: backup_gz
+
+- name: Verify gzip backup was created
+  ansible.builtin.assert:
+    that:
+      - backup_gz is changed
+      - backup_gz.size > 0
+
+# ============================================================
+# Test check_mode
+# ============================================================
+
+- name: Backup in check mode
+  ansible.mysql.mysql_backup:
+    databases:
+      - "{{ test_db }}"
+    target: "{{ backup_dir }}/check_mode.sql"
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+  check_mode: true
+  register: backup_check
+
+- name: Verify check mode reports changed but no file
+  ansible.builtin.assert:
+    that:
+      - backup_check is changed
+
+- name: Verify check mode did not create file
+  ansible.builtin.stat:
+    path: "{{ backup_dir }}/check_mode.sql"
+  register: check_mode_stat
+
+- name: Assert file does not exist
+  ansible.builtin.assert:
+    that:
+      - not check_mode_stat.stat.exists
+
+# ============================================================
+# Test backup all databases
+# ============================================================
+
+- name: Backup all databases
+  ansible.mysql.mysql_backup:
+    databases:
+      - all
+    target: "{{ backup_dir }}/all_dbs.sql"
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+  register: backup_all
+
+- name: Verify all-databases backup
+  ansible.builtin.assert:
+    that:
+      - backup_all is changed
+      - backup_all.size > 0
+
+# ============================================================
+# Test state=absent
+# ============================================================
+
+- name: Remove a backup file
+  ansible.mysql.mysql_backup:
+    databases:
+      - "{{ test_db }}"
+    target: "{{ backup_dir }}/plain.sql"
+    state: absent
+  register: backup_remove
+
+- name: Verify backup was removed
+  ansible.builtin.assert:
+    that:
+      - backup_remove is changed
+
+- name: Remove same file again (idempotent)
+  ansible.mysql.mysql_backup:
+    databases:
+      - "{{ test_db }}"
+    target: "{{ backup_dir }}/plain.sql"
+    state: absent
+  register: backup_remove_again
+
+- name: Verify no change on second removal
+  ansible.builtin.assert:
+    that:
+      - backup_remove_again is not changed
+
+# ============================================================
+# Test error: tables with multiple databases
+# ============================================================
+
+- name: Attempt tables with multiple databases (should fail)
+  ansible.mysql.mysql_backup:
+    databases:
+      - db1
+      - db2
+    tables:
+      - table1
+    target: "{{ backup_dir }}/fail.sql"
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+  register: backup_fail
+  ignore_errors: true
+
+- name: Verify failure for tables with multiple databases
+  ansible.builtin.assert:
+    that:
+      - backup_fail is failed
+      - "'tables can only be specified' in backup_fail.msg"
+
+# ============================================================
+# Cleanup
+# ============================================================
+
+- name: Drop test database
+  ansible.mysql.mysql_db:
+    name: "{{ test_db }}"
+    state: absent
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+
+- name: Remove backup directory
+  ansible.builtin.file:
+    path: "{{ backup_dir }}"
+    state: absent

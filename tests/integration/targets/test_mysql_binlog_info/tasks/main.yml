@@ -1,0 +1,57 @@
+---
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+# ============================================================
+# Test gathering binary log information
+# ============================================================
+
+- name: Get binary log information
+  ansible.mysql.mysql_binlog_info:
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+  register: binlog_info
+
+- name: Verify binary log info was returned
+  ansible.builtin.assert:
+    that:
+      - binlog_info is not changed
+      - binlog_info.status is defined
+      - binlog_info.logs is defined
+      - binlog_info.logs is iterable
+
+# ============================================================
+# Test that status contains expected fields
+# ============================================================
+
+- name: Verify status fields when binlog is enabled
+  ansible.builtin.assert:
+    that:
+      - binlog_info.status.file is defined
+      - binlog_info.status.position is defined
+      - binlog_info.status.position > 0
+  when: binlog_info.status | length > 0
+
+# ============================================================
+# Test check mode (read-only, should work identically)
+# ============================================================
+
+- name: Get binary log info in check mode
+  ansible.mysql.mysql_binlog_info:
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+  check_mode: true
+  register: binlog_info_check
+
+- name: Verify check mode returns same data
+  ansible.builtin.assert:
+    that:
+      - binlog_info_check is not changed
+      - binlog_info_check.status is defined
+      - binlog_info_check.logs is defined

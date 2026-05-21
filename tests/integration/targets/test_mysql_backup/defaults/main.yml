@@ -1,0 +1,7 @@
+---
+mysql_user: root
+mysql_password: msandbox
+mysql_host: '{{ gateway_addr }}'
+mysql_primary_port: 3307
+backup_dir: /tmp/mysql_backup_test
+test_db: backup_test_db

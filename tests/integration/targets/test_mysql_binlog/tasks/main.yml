@@ -1,0 +1,101 @@
+---
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+# ============================================================
+# Test setting binlog_expire_logs_seconds
+# ============================================================
+
+- name: Set binlog_expire_logs_seconds to 604800
+  ansible.mysql.mysql_binlog:
+    binlog_expire_logs_seconds: 604800
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+  register: binlog_expire
+
+- name: Verify binlog_expire_logs_seconds was set
+  ansible.builtin.assert:
+    that:
+      - binlog_expire is changed
+      - binlog_expire.binlog_expire_logs_seconds == 604800
+      - binlog_expire.executed_commands | length > 0
+
+# ============================================================
+# Test idempotence for binlog_expire_logs_seconds
+# ============================================================
+
+- name: Set binlog_expire_logs_seconds to same value again
+  ansible.mysql.mysql_binlog:
+    binlog_expire_logs_seconds: 604800
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+  register: binlog_expire_idem
+
+- name: Verify idempotence
+  ansible.builtin.assert:
+    that:
+      - binlog_expire_idem is not changed
+
+# ============================================================
+# Test check_mode
+# ============================================================
+
+- name: Set binlog_expire_logs_seconds in check mode
+  ansible.mysql.mysql_binlog:
+    binlog_expire_logs_seconds: 86400
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+  check_mode: true
+  register: binlog_check
+
+- name: Verify check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - binlog_check is changed
+
+# ============================================================
+# Test purge_before_date
+# ============================================================
+
+- name: Purge binary logs before a date
+  ansible.mysql.mysql_binlog:
+    purge_before_date: "2000-01-01 00:00:00"
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+  register: binlog_purge
+
+- name: Verify purge was executed
+  ansible.builtin.assert:
+    that:
+      - binlog_purge is changed
+      - binlog_purge.purged == true
+
+# ============================================================
+# Test mutual exclusivity
+# ============================================================
+
+- name: Attempt both purge options (should fail)
+  ansible.mysql.mysql_binlog:
+    purge_before_date: "2024-01-01 00:00:00"
+    purge_before_log: "mysql-bin.000001"
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+  register: binlog_mutual
+  ignore_errors: true
+
+- name: Verify mutual exclusivity error
+  ansible.builtin.assert:
+    that:
+      - binlog_mutual is failed
