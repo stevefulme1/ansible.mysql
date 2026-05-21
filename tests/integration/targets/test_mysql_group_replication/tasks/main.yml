@@ -1,0 +1,105 @@
+---
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+# Copyright: (c) 2025, Steve Fulmer (@stevefulme1)
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+# Test mysql_group_replication module
+
+- name: Get Group Replication status
+  ansible.mysql.mysql_group_replication:
+    mode: status
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+  register: result
+
+- name: Assert status returns members list
+  ansible.builtin.assert:
+    that:
+      - result is not changed
+      - result.members is defined
+      - result.members | type_debug == 'list'
+      - result.queries is defined
+
+- name: Start Group Replication (check mode)
+  ansible.mysql.mysql_group_replication:
+    mode: start
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+  check_mode: true
+  register: result
+
+- name: Assert check mode start
+  ansible.builtin.assert:
+    that:
+      - result.msg is defined
+
+- name: Stop Group Replication (check mode)
+  ansible.mysql.mysql_group_replication:
+    mode: stop
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+  check_mode: true
+  register: result
+
+- name: Assert check mode stop
+  ansible.builtin.assert:
+    that:
+      - result.msg is defined
+
+- name: Bootstrap Group Replication (check mode)
+  ansible.mysql.mysql_group_replication:
+    mode: bootstrap
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+  check_mode: true
+  register: result
+
+- name: Assert check mode bootstrap
+  ansible.builtin.assert:
+    that:
+      - result is changed
+      - "'would be bootstrapped' in result.msg"
+
+- name: Switch to single-primary mode (check mode)
+  ansible.mysql.mysql_group_replication:
+    mode: switch_to_single_primary
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+  check_mode: true
+  register: result
+
+- name: Assert check mode switch to single-primary
+  ansible.builtin.assert:
+    that:
+      - result is changed
+      - "'single-primary' in result.msg"
+
+- name: Switch to multi-primary mode (check mode)
+  ansible.mysql.mysql_group_replication:
+    mode: switch_to_multi_primary
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+  check_mode: true
+  register: result
+
+- name: Assert check mode switch to multi-primary
+  ansible.builtin.assert:
+    that:
+      - result is changed
+      - "'multi-primary' in result.msg"

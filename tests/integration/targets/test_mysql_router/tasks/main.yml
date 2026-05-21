@@ -1,0 +1,60 @@
+---
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+# Copyright: (c) 2025, Steve Fulmer (@stevefulme1)
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+# Test mysql_router module
+
+- name: Bootstrap MySQL Router (check mode)
+  ansible.mysql.mysql_router:
+    state: bootstrapped
+    bootstrap_uri: "{{ mysql_user }}:{{ mysql_password }}@{{ mysql_host }}:{{ mysql_primary_port }}"
+    directory: /tmp/test_mysqlrouter
+  check_mode: true
+  register: result
+
+- name: Assert check mode bootstrap
+  ansible.builtin.assert:
+    that:
+      - result is changed
+      - "'would be bootstrapped' in result.msg"
+
+- name: Start MySQL Router (check mode)
+  ansible.mysql.mysql_router:
+    state: started
+  check_mode: true
+  register: result
+
+- name: Assert check mode start
+  ansible.builtin.assert:
+    that:
+      - result is changed
+      - "'would be started' in result.msg"
+
+- name: Stop MySQL Router (check mode)
+  ansible.mysql.mysql_router:
+    state: stopped
+  check_mode: true
+  register: result
+
+- name: Assert check mode stop
+  ansible.builtin.assert:
+    that:
+      - result is changed
+      - "'would be stopped' in result.msg"
+
+- name: Restart MySQL Router (check mode)
+  ansible.mysql.mysql_router:
+    state: restarted
+  check_mode: true
+  register: result
+
+- name: Assert check mode restart
+  ansible.builtin.assert:
+    that:
+      - result is changed
+      - "'would be restarted' in result.msg"

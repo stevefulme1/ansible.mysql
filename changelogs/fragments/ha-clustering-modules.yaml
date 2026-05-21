@@ -1,0 +1,6 @@
+minor_changes:
+  - "mysql_innodb_cluster - new module to manage MySQL InnoDB Clusters via MySQL Shell AdminAPI (https://github.com/ansible-collections/ansible.mysql/pull/0)."
+  - "mysql_innodb_cluster_info - new module to gather information about MySQL InnoDB Clusters (https://github.com/ansible-collections/ansible.mysql/pull/0)."
+  - "mysql_group_replication - new module to manage MySQL Group Replication (start, stop, bootstrap, switch primary modes) (https://github.com/ansible-collections/ansible.mysql/pull/0)."
+  - "mysql_router - new module to manage MySQL Router bootstrap and lifecycle (https://github.com/ansible-collections/ansible.mysql/pull/0)."
+  - "mysql_router_info - new module to gather MySQL Router status via the REST API (https://github.com/ansible-collections/ansible.mysql/pull/0)."

@@ -1,0 +1,110 @@
+---
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+# Copyright: (c) 2025, Steve Fulmer (@stevefulme1)
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+# Test mysql_innodb_cluster module
+
+- name: Create an InnoDB Cluster (check mode)
+  ansible.mysql.mysql_innodb_cluster:
+    name: "{{ cluster_name }}"
+    state: present
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+  check_mode: true
+  register: result
+
+- name: Assert check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - result is changed
+      - "'would be created' in result.msg"
+
+- name: Create an InnoDB Cluster
+  ansible.mysql.mysql_innodb_cluster:
+    name: "{{ cluster_name }}"
+    state: present
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+  register: result
+
+- name: Assert cluster created
+  ansible.builtin.assert:
+    that:
+      - result is changed
+      - "'created successfully' in result.msg"
+
+- name: Create same cluster again (idempotency)
+  ansible.mysql.mysql_innodb_cluster:
+    name: "{{ cluster_name }}"
+    state: present
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+  register: result
+
+- name: Assert no change on idempotent create
+  ansible.builtin.assert:
+    that:
+      - result is not changed
+      - "'already exists' in result.msg"
+
+- name: Dissolve the cluster (check mode)
+  ansible.mysql.mysql_innodb_cluster:
+    name: "{{ cluster_name }}"
+    state: absent
+    force: true
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+  check_mode: true
+  register: result
+
+- name: Assert check mode dissolve reports changed
+  ansible.builtin.assert:
+    that:
+      - result is changed
+      - "'would be dissolved' in result.msg"
+
+- name: Dissolve the cluster
+  ansible.mysql.mysql_innodb_cluster:
+    name: "{{ cluster_name }}"
+    state: absent
+    force: true
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+  register: result
+
+- name: Assert cluster dissolved
+  ansible.builtin.assert:
+    that:
+      - result is changed
+      - "'dissolved successfully' in result.msg"
+
+- name: Dissolve non-existent cluster (idempotency)
+  ansible.mysql.mysql_innodb_cluster:
+    name: "{{ cluster_name }}"
+    state: absent
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+    login_host: "{{ mysql_host }}"
+    login_port: "{{ mysql_primary_port }}"
+  register: result
+
+- name: Assert no change on dissolve non-existent
+  ansible.builtin.assert:
+    that:
+      - result is not changed
+      - "'does not exist' in result.msg"

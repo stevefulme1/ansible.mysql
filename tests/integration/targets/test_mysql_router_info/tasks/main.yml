@@ -1,0 +1,28 @@
+---
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+# Copyright: (c) 2025, Steve Fulmer (@stevefulme1)
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+# Test mysql_router_info module
+
+- name: Get MySQL Router info (REST API may not be available)
+  ansible.mysql.mysql_router_info:
+    router_host: "{{ router_host }}"
+    router_port: "{{ router_port }}"
+    use_ssl: true
+    validate_certs: false
+  register: result
+  ignore_errors: true
+
+- name: Assert result structure when succeeded
+  ansible.builtin.assert:
+    that:
+      - result is not changed
+      - result.router_status is defined
+      - result.routes is defined
+      - result.destinations is defined
+  when: result is succeeded
