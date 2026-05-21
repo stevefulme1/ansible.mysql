@@ -1,0 +1,89 @@
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+# ==================================================================
+# Test mysql_perf_schema module
+# ==================================================================
+
+- name: Enable wait/io/file instruments (check_mode)
+  mysql_perf_schema:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    instruments:
+      - name_pattern: 'wait/io/file/%'
+        enabled: true
+  check_mode: true
+  register: result
+
+- name: Assert check_mode returns changed or not
+  assert:
+    that:
+      - result is not failed
+
+- name: Enable wait/io/file instruments
+  mysql_perf_schema:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    instruments:
+      - name_pattern: 'wait/io/file/%'
+        enabled: true
+  register: result
+
+- name: Assert success
+  assert:
+    that:
+      - result is not failed
+
+- name: Enable same instruments again (idempotency)
+  mysql_perf_schema:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    instruments:
+      - name_pattern: 'wait/io/file/%'
+        enabled: true
+  register: result
+
+- name: Assert idempotent
+  assert:
+    that:
+      - result is not changed
+
+- name: Disable wait/io/file instruments
+  mysql_perf_schema:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    instruments:
+      - name_pattern: 'wait/io/file/%'
+        enabled: false
+  register: result
+
+- name: Assert changed
+  assert:
+    that:
+      - result is changed
+
+- name: Configure a consumer
+  mysql_perf_schema:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    consumers:
+      - name: events_statements_history
+        enabled: true
+  register: result
+
+- name: Assert consumer result
+  assert:
+    that:
+      - result is not failed

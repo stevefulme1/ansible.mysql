@@ -9,3 +9,9 @@ action_groups:
     - mysql_role
     - mysql_user
     - mysql_variables
+    - mysql_perf_schema
+    - mysql_resource_group
+    - mysql_resource_group_info
+    - mysql_event
+    - mysql_event_info
+    - mysql_slow_log

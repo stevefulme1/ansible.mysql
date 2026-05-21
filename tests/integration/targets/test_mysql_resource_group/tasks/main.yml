@@ -1,0 +1,126 @@
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+# ==================================================================
+# Test mysql_resource_group and mysql_resource_group_info modules
+# ==================================================================
+
+- name: Create a USER resource group (check_mode)
+  mysql_resource_group:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    name: test_rg_ansible
+    type: USER
+    vcpu: "0-1"
+    thread_priority: 10
+    state: present
+  check_mode: true
+  register: result
+
+- name: Assert check_mode changed
+  assert:
+    that:
+      - result is changed
+
+- name: Create a USER resource group
+  mysql_resource_group:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    name: test_rg_ansible
+    type: USER
+    vcpu: "0-1"
+    thread_priority: 10
+    state: present
+  register: result
+
+- name: Assert created
+  assert:
+    that:
+      - result is changed
+
+- name: Create same resource group again (idempotency)
+  mysql_resource_group:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    name: test_rg_ansible
+    type: USER
+    vcpu: "0-1"
+    thread_priority: 10
+    state: present
+  register: result
+
+- name: Assert idempotent
+  assert:
+    that:
+      - result is not changed
+
+- name: Get resource group info
+  mysql_resource_group_info:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    name: test_rg_ansible
+  register: rg_info
+
+- name: Assert info returned
+  assert:
+    that:
+      - rg_info.resource_groups | length == 1
+      - rg_info.resource_groups[0].name == 'test_rg_ansible'
+      - rg_info.resource_groups[0].type == 'USER'
+
+- name: Disable resource group
+  mysql_resource_group:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    name: test_rg_ansible
+    type: USER
+    enabled: false
+    state: present
+  register: result
+
+- name: Assert disabled
+  assert:
+    that:
+      - result is changed
+
+- name: Drop resource group
+  mysql_resource_group:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    name: test_rg_ansible
+    state: absent
+  register: result
+
+- name: Assert dropped
+  assert:
+    that:
+      - result is changed
+
+- name: Drop resource group again (idempotency)
+  mysql_resource_group:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    name: test_rg_ansible
+    state: absent
+  register: result
+
+- name: Assert idempotent drop
+  assert:
+    that:
+      - result is not changed

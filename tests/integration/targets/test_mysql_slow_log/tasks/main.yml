@@ -1,0 +1,106 @@
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+# ==================================================================
+# Test mysql_slow_log module
+# ==================================================================
+
+- name: Enable slow query log (check_mode)
+  mysql_slow_log:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    slow_query_log: true
+    long_query_time: 5.0
+  check_mode: true
+  register: result
+
+- name: Assert check_mode
+  assert:
+    that:
+      - result is not failed
+
+- name: Enable slow query log with 5s threshold
+  mysql_slow_log:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    slow_query_log: true
+    long_query_time: 5.0
+  register: result
+
+- name: Assert success
+  assert:
+    that:
+      - result is not failed
+      - result.settings is defined
+
+- name: Set same values again (idempotency)
+  mysql_slow_log:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    slow_query_log: true
+    long_query_time: 5.0
+  register: result
+
+- name: Assert idempotent
+  assert:
+    that:
+      - result is not changed
+
+- name: Change long_query_time to 2s
+  mysql_slow_log:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    long_query_time: 2.0
+  register: result
+
+- name: Assert changed
+  assert:
+    that:
+      - result is changed
+
+- name: Set log_output to TABLE
+  mysql_slow_log:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    log_output: TABLE
+  register: result
+
+- name: Assert changed
+  assert:
+    that:
+      - result is changed
+
+- name: Disable slow query log
+  mysql_slow_log:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    slow_query_log: false
+  register: result
+
+- name: Assert changed
+  assert:
+    that:
+      - result is changed
+
+# Reset to FILE output for other tests
+- name: Reset log_output to FILE
+  mysql_slow_log:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    log_output: FILE

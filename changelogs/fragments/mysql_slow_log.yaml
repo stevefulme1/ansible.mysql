@@ -1,0 +1,2 @@
+minor_changes:
+  - mysql_slow_log - new module to configure MySQL slow query log settings declaratively (https://github.com/ansible-collections/community.mysql/pull/XXX).

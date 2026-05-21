@@ -1,0 +1,2 @@
+minor_changes:
+  - mysql_perf_schema - new module to enable/disable Performance Schema instruments and consumers (https://github.com/ansible-collections/community.mysql/pull/XXX).

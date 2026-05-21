@@ -1,0 +1,144 @@
+####################################################################
+# WARNING: These are designed specifically for Ansible tests       #
+# and should not be used as examples of how to write Ansible roles #
+####################################################################
+
+# ==================================================================
+# Test mysql_event and mysql_event_info modules
+# ==================================================================
+
+- name: Create test database
+  mysql_db:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    name: '{{ test_db }}'
+    state: present
+
+- name: Enable event scheduler
+  mysql_variables:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    variable: event_scheduler
+    value: "ON"
+
+- name: Create a recurring event (check_mode)
+  mysql_event:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    name: test_event_ansible
+    schema: '{{ test_db }}'
+    schedule_type: every
+    schedule_value: "1 HOUR"
+    body: "SELECT 1"
+    comment: "Test event"
+    state: present
+  check_mode: true
+  register: result
+
+- name: Assert check_mode changed
+  assert:
+    that:
+      - result is changed
+
+- name: Create a recurring event
+  mysql_event:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    name: test_event_ansible
+    schema: '{{ test_db }}'
+    schedule_type: every
+    schedule_value: "1 HOUR"
+    body: "SELECT 1"
+    comment: "Test event"
+    state: present
+  register: result
+
+- name: Assert created
+  assert:
+    that:
+      - result is changed
+
+- name: Get event info
+  mysql_event_info:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    schema: '{{ test_db }}'
+    name: test_event_ansible
+  register: event_info
+
+- name: Assert event info returned
+  assert:
+    that:
+      - event_info.events | length == 1
+      - event_info.events[0].name == 'test_event_ansible'
+      - event_info.events[0].schedule_type == 'every'
+      - event_info.events[0].enabled == true
+
+- name: Disable the event
+  mysql_event:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    name: test_event_ansible
+    schema: '{{ test_db }}'
+    enabled: false
+    state: present
+  register: result
+
+- name: Assert disabled
+  assert:
+    that:
+      - result is changed
+
+- name: Drop the event
+  mysql_event:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    name: test_event_ansible
+    schema: '{{ test_db }}'
+    state: absent
+  register: result
+
+- name: Assert dropped
+  assert:
+    that:
+      - result is changed
+
+- name: Drop event again (idempotency)
+  mysql_event:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    name: test_event_ansible
+    schema: '{{ test_db }}'
+    state: absent
+  register: result
+
+- name: Assert idempotent
+  assert:
+    that:
+      - result is not changed
+
+# Cleanup
+- name: Drop test database
+  mysql_db:
+    login_user: '{{ mysql_user }}'
+    login_password: '{{ mysql_password }}'
+    login_host: '{{ mysql_host }}'
+    login_port: '{{ mysql_primary_port }}'
+    name: '{{ test_db }}'
+    state: absent
